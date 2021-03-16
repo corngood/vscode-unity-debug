@@ -214,13 +214,13 @@ namespace UnityDebug
             var os = Environment.OSVersion;
             if (os.Platform != PlatformID.MacOSX && os.Platform != PlatformID.Unix && os.Platform != PlatformID.Win32NT)
             {
-                SendErrorResponse(response, 3000, "Mono Debug is not supported on this platform ({_platform}).", new { _platform = os.Platform.ToString() }, true, true);
+                SetErrorResponse(response, 3000, "Mono Debug is not supported on this platform ({_platform}).", new { _platform = os.Platform.ToString() }, true, true);
                 return;
             }
 
             SendOutput("stdout", "UnityDebug: Initializing");
 
-            SendResponse(response, new Capabilities()
+            SetResponse(response, new Capabilities()
             {
                 // This debug adapter does not need the configurationDoneRequest.
                 supportsConfigurationDoneRequest = false,
@@ -270,7 +270,7 @@ namespace UnityDebug
             if (processes.Length == 0)
             {
                 Log.Write($"Could not find target name '{name}'.");
-                SendErrorResponse(response, 8001, "Could not find target name '{_name}'. Is it running?", new { _name = name });
+                SetErrorResponse(response, 8001, "Could not find target name '{_name}'. Is it running?", new { _name = name });
                 return;
             }
 
@@ -306,7 +306,7 @@ namespace UnityDebug
 
             Log.Write($"UnityDebug: Attached to Unity process '{process.Name}' ({process.Id})");
             SendOutput("stdout", "UnityDebug: Attached to Unity process '" + process.Name + "' (" + process.Id + ")\n");
-            SendResponse(response);
+            SetResponse(response);
         }
 
         static string CleanPath(string pathToEditorInstanceJson)
@@ -323,7 +323,7 @@ namespace UnityDebug
         void TooManyInstances(Response response, string name, UnityProcessInfo[] processes)
         {
             Log.Write($"Multiple targets with name '{name}' running. Unable to connect.");
-            SendErrorResponse(response, 8002, "Multiple targets with name '{_name}' running. Unable to connect.\n" +
+            SetErrorResponse(response, 8002, "Multiple targets with name '{_name}' running. Unable to connect.\n" +
                 "Use \"Unity Attach Debugger\" from the command palette (View > Command Palette...) to specify which process to attach to.", new { _name = name });
 
             Log.Write($"UnityDebug: Multiple targets with name '{name}' running. Unable to connect.)");
@@ -425,21 +425,21 @@ namespace UnityDebug
             }
 
             SendOutput("stdout", "UnityDebug: Disconnected");
-            SendResponse(response);
+            SetResponse(response);
         }
 
         public override void SetFunctionBreakpoints(Response response, dynamic arguments)
         {
             Log.Write($"UnityDebug: SetFunctionBreakpoints: {response} ; {arguments}");
             var breakpoints = new List<VSCodeDebug.Breakpoint>();
-            SendResponse(response, new SetFunctionBreakpointsBody(breakpoints.ToArray()));
+            SetResponse(response, new SetFunctionBreakpointsBody(breakpoints.ToArray()));
         }
 
         public override void Continue(Response response, dynamic arguments)
         {
             Log.Write($"UnityDebug: Continue: {response} ; {arguments}");
             WaitForSuspend();
-            SendResponse(response, new ContinueResponseBody());
+            SetResponse(response, new ContinueResponseBody());
             lock (m_Lock)
             {
                 if (m_Session == null || m_Session.IsRunning || m_Session.HasExited) return;
@@ -453,7 +453,7 @@ namespace UnityDebug
         {
             Log.Write($"UnityDebug: Next: {response} ; {arguments}");
             WaitForSuspend();
-            SendResponse(response);
+            SetResponse(response);
             lock (m_Lock)
             {
                 if (m_Session == null || m_Session.IsRunning || m_Session.HasExited) return;
@@ -467,7 +467,7 @@ namespace UnityDebug
         {
             Log.Write($"UnityDebug: StepIn: {response} ; {arguments}");
             WaitForSuspend();
-            SendResponse(response);
+            SetResponse(response);
             lock (m_Lock)
             {
                 if (m_Session == null || m_Session.IsRunning || m_Session.HasExited) return;
@@ -481,7 +481,7 @@ namespace UnityDebug
         {
             Log.Write($"UnityDebug: StepIn: {response} ; {arguments}");
             WaitForSuspend();
-            SendResponse(response);
+            SetResponse(response);
             lock (m_Lock)
             {
                 if (m_Session == null || m_Session.IsRunning || m_Session.HasExited) return;
@@ -494,7 +494,7 @@ namespace UnityDebug
         public override void Pause(Response response, dynamic arguments)
         {
             Log.Write($"UnityDebug: StepIn: {response} ; {arguments}");
-            SendResponse(response);
+            SetResponse(response);
             PauseDebugger();
         }
 
@@ -512,7 +512,7 @@ namespace UnityDebug
             var reference = GetInt(arguments, "variablesReference", -1);
             if (reference == -1)
             {
-                SendErrorResponse(response, 3009, "variables: property 'variablesReference' is missing", null, false, true);
+                SetErrorResponse(response, 3009, "variables: property 'variablesReference' is missing", null, false, true);
                 return;
             }
 
@@ -535,7 +535,7 @@ namespace UnityDebug
                         if (variable.name == GetString(arguments, "name"))
                         {
                             v.Value = value;
-                            SendResponse(response, new SetVariablesResponseBody(value, variable.type, variable.variablesReference));
+                            SetResponse(response, new SetVariablesResponseBody(value, variable.type, variable.variablesReference));
                         }
                     }
                 }
@@ -546,7 +546,7 @@ namespace UnityDebug
         {
             Log.Write($"UnityDebug: StepIn: {response} ; {arguments}");
             SetExceptionBreakpoints(arguments.exceptionOptions);
-            SendResponse(response);
+            SetResponse(response);
         }
 
         public override void SetBreakpoints(Response response, dynamic arguments)
@@ -564,14 +564,14 @@ namespace UnityDebug
 
             if (path == null)
             {
-                SendErrorResponse(response, 3010, "setBreakpoints: property 'source' is empty or misformed", null, false, true);
+                SetErrorResponse(response, 3010, "setBreakpoints: property 'source' is empty or misformed", null, false, true);
                 return;
             }
 
             if (!HasMonoExtension(path))
             {
                 // we only support breakpoints in files mono can handle
-                SendResponse(response, new SetBreakpointsResponseBody());
+                SetResponse(response, new SetBreakpointsResponseBody());
                 return;
             }
 
@@ -621,7 +621,7 @@ namespace UnityDebug
                     catch (Exception e)
                     {
                         Log.Write(e.StackTrace);
-                        SendErrorResponse(response, 3011, "setBreakpoints: " + e.Message, null, false, true);
+                        SetErrorResponse(response, 3011, "setBreakpoints: " + e.Message, null, false, true);
                         responseBreakpoints.Add(new VSCodeDebug.Breakpoint(false, breakpoint.line, breakpoint.column, e.Message));
                     }
                 }
@@ -632,7 +632,7 @@ namespace UnityDebug
                 }
             }
 
-            SendResponse(response, new SetBreakpointsResponseBody(responseBreakpoints));
+            SetResponse(response, new SetBreakpointsResponseBody(responseBreakpoints));
         }
 
         public override void StackTrace(Response response, dynamic arguments)
@@ -695,7 +695,7 @@ namespace UnityDebug
                 }
             }
 
-            SendResponse(response, new StackTraceResponseBody(stackFrames, totalFrames));
+            SetResponse(response, new StackTraceResponseBody(stackFrames, totalFrames));
         }
 
         ThreadInfo DebuggerActiveThread()
@@ -708,7 +708,7 @@ namespace UnityDebug
 
         public override void Source(Response response, dynamic arguments)
         {
-            SendErrorResponse(response, 1020, "No source available");
+            SetErrorResponse(response, 1020, "No source available");
         }
 
         public override void Scopes(Response response, dynamic args)
@@ -729,7 +729,7 @@ namespace UnityDebug
                 scopes.Add(new Scope("Local", m_VariableHandles.Create(locals)));
             }
 
-            SendResponse(response, new ScopesResponseBody(scopes));
+            SetResponse(response, new ScopesResponseBody(scopes));
         }
 
         public override void Variables(Response response, dynamic args)
@@ -737,7 +737,7 @@ namespace UnityDebug
             int reference = GetInt(args, "variablesReference", -1);
             if (reference == -1)
             {
-                SendErrorResponse(response, 3009, "variables: property 'variablesReference' is missing", null, false, true);
+                SetErrorResponse(response, 3009, "variables: property 'variablesReference' is missing", null, false, true);
                 return;
             }
 
@@ -779,7 +779,7 @@ namespace UnityDebug
                 }
             }
 
-            SendResponse(response, new VariablesResponseBody(variables));
+            SetResponse(response, new VariablesResponseBody(variables));
         }
 
         public override void Threads(Response response, dynamic args)
@@ -803,7 +803,7 @@ namespace UnityDebug
                 threads = d.Values.ToList();
             }
 
-            SendResponse(response, new ThreadsResponseBody(threads));
+            SetResponse(response, new ThreadsResponseBody(threads));
         }
 
         public override void Evaluate(Response response, dynamic args)
@@ -845,19 +845,19 @@ namespace UnityDebug
                     error = "not available";
                 }
 
-                SendResponse(response, new EvaluateResponseBody(error));
+                SetResponse(response, new EvaluateResponseBody(error));
                 return;
             }
 
             if (flags.HasFlag(ObjectValueFlags.Unknown))
             {
-                SendResponse(response, new EvaluateResponseBody("invalid expression"));
+                SetResponse(response, new EvaluateResponseBody("invalid expression"));
                 return;
             }
 
             if (flags.HasFlag(ObjectValueFlags.Object) && flags.HasFlag(ObjectValueFlags.Namespace))
             {
-                SendResponse(response, new EvaluateResponseBody("not available"));
+                SetResponse(response, new EvaluateResponseBody("not available"));
                 return;
             }
 
@@ -867,12 +867,12 @@ namespace UnityDebug
                 handle = m_VariableHandles.Create(val.GetAllChildren());
             }
 
-            SendResponse(response, new EvaluateResponseBody(val.DisplayValue, handle));
+            SetResponse(response, new EvaluateResponseBody(val.DisplayValue, handle));
         }
 
         void SendError(Response response, string error)
         {
-            SendErrorResponse(response, 3014, "Evaluate request failed ({_reason}).", new { _reason = error });
+            SetErrorResponse(response, 3014, "Evaluate request failed ({_reason}).", new { _reason = error });
         }
 
         //---- private ------------------------------------------
