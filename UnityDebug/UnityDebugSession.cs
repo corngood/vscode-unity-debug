@@ -678,7 +678,7 @@ namespace UnityDebug
                         {
                             if (File.Exists(path))
                             {
-                                source = new Source(sourceName, ConvertDebuggerPathToClient(path), 0, "normal");
+                                source = new Source(sourceName, Path.GetFullPath(ConvertDebuggerPathToClient(path)), 0, "normal");
                                 hint = "normal";
                             }
                             else
